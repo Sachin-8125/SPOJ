@@ -1,89 +1,122 @@
-#include <bits/stdc++.h>
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <cctype>
 using namespace std;
 
-long long countSubseq(const string& A, int l, int r, const string& w) {
-    // Count ways A[l..r] as subsequence in w (A uppercase, w lowercase)
-    int m = r - l + 1, n = (int)w.size();
-    if (m <= 0) return 0;
-    vector<long long> dp(n + 1, 1), prev(n + 1, 0);
-    // dp0: i=0 row is 1s
-    for (int i = 1; i <= m; ++i) {
-        prev.assign(n + 1, 0);
-        char c = A[l + i - 1];
-        for (int j = 1; j <= n; ++j) {
-            prev[j] = prev[j - 1];
-            if (toupper(w[j - 1]) == c) {
-                prev[j] += dp[j - 1];
+static long long maxCount(const vector<string> &words, const string &acroLower) {
+    long long sum[75][75] = {0};
+    long long sum2[75][75] = {0};
+
+    sum[0][0] = 1;
+
+    for (int i = 0; i < (int)words.size(); i++) {
+        const string &w = words[i];
+        int wrdLen = (int)w.size();
+        for (int j = 0; j < (int)acroLower.size(); j++) {
+            int mx = min(wrdLen, (int)acroLower.size() - j);
+
+            // fill first column with 1 and clear row 0 beyond column 0 for this mx window
+            for (int k = 0; k <= wrdLen; k++) sum2[k][0] = 1;
+            for (int m = 1; m <= mx; m++) sum2[0][m] = 0;
+
+            for (int k = 0; k < wrdLen; k++) {
+                for (int m = 0; m < mx; m++) {
+                    sum2[k + 1][m + 1] = sum2[k][m + 1];
+                    if (w[k] == acroLower[j + m]) {
+                        sum2[k + 1][m + 1] += sum2[k][m];
+                    }
+                }
+            }
+
+            for (int k = 1; k <= mx; k++) {
+                sum[i + 1][j + k] += sum[i][j] * sum2[wrdLen][k];
             }
         }
-        dp.swap(prev);
     }
-    return dp[n];
+
+    return sum[words.size()][acroLower.size()];
+}
+
+static string trim(const string &s) {
+    size_t a = 0, b = s.size();
+    while (a < b && isspace((unsigned char)s[a])) a++;
+    if (a == b) return "";
+    while (b > a && isspace((unsigned char)s[b - 1])) b--;
+    return s.substr(a, b - a);
+}
+
+static vector<string> splitBySpace(const string &line) {
+    vector<string> tokens;
+    string token;
+    for (size_t i = 0; i < line.size(); i++) {
+        if (line[i] == ' ') {
+            tokens.push_back(token);
+            token.clear();
+        } else {
+            token.push_back(line[i]);
+        }
+    }
+    tokens.push_back(token);
+    return tokens;
+}
+
+static vector<string> filterWords(const string &line, const vector<string> &insigwords) {
+    vector<string> words = splitBySpace(line);
+    int k = (int)words.size();
+
+    for (const string &insRaw : insigwords) {
+        string ins = trim(insRaw);
+        for (int j = 0; j < (int)words.size(); j++) {
+            string wrd = words[j];
+            if (!wrd.empty()) wrd = trim(wrd);
+            if (!wrd.empty() && !ins.empty() && ins == wrd) {
+                words[j].clear();
+                k--;
+            }
+        }
+    }
+
+    vector<string> filtered;
+    filtered.reserve(k);
+    for (const string &w : words) if (!w.empty()) filtered.push_back(w);
+    return filtered;
 }
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    int n;
-    while ( (cin >> n) ) {
-        if (n == 0) break;
-        string dummy;
-        string ign;
-        unordered_set<string> stop;
-        stop.reserve(n * 2);
-        for (int i = 0; i < n; ++i) {
-            cin >> ign;
-            stop.insert(ign);
-        }
-        string line;
-        getline(cin, line); // consume endline
-        while (true) {
-            if (!getline(cin, line)) return 0;
-            if (line == "LAST CASE") break;
-            // split first token (abbr) and the rest (phrase)
-            stringstream ss(line);
-            string abbr;
-            ss >> abbr;
-            string rest;
-            vector<string> words;
-            string token;
-            // collect remaining as phrase then split by spaces
-            vector<string> raw;
-            while (ss >> token) raw.push_back(token);
-            for (auto& w : raw) {
-                if (!stop.count(w)) words.push_back(w);
-            }
-            int k = (int)words.size();
-            int L = (int)abbr.size();
 
-            vector<vector<long long>> ways(k, vector<long long>(L * L, -1));
-            auto getWays = [&](int wi, int l, int r) -> long long {
-                if (l > r) return 0;
-                int idx = l * L + r;
-                if (ways[wi][idx] != -1) return ways[wi][idx];
-                return ways[wi][idx] = countSubseq(abbr, l, r, words[wi]);
-            };
-            // f[i][p]: first i words, first p letters used
-            vector<vector<long long>> f(k + 1, vector<long long>(L + 1, 0));
-            f[0] = 1;
-            for (int i = 1; i <= k; ++i) {
-                for (int p = 1; p <= L; ++p) {
-                    long long sum = 0;
-                    for (int t = 1; t <= p; ++t) {
-                        long long left = f[i - 1][p - t];
-                        if (left == 0) continue;
-                        long long right = getWays(i - 1, p - t, p - 1);
-                        if (right == 0) continue;
-                        sum += left * right;
-                    }
-                    f[i][p] = sum;
-                }
-            }
-            long long ans = f[k][L];
-            if (ans == 0) {
-                cout << abbr << " is not a valid abbreviation\n";
+    while (true) {
+        int N;
+        if (!(cin >> N)) return 0;
+        if (N == 0) break;
+        vector<string> insigwords(N);
+        for (int i = 0; i < N; i++) cin >> insigwords[i];
+        string dummy; getline(cin, dummy);
+
+        string line;
+        while (getline(cin, line)) {
+            string trimmed = trim(line);
+            if (trimmed == "LAST CASE") break;
+
+            vector<string> filteredWords = filterWords(line, insigwords);
+            if (filteredWords.empty()) continue;
+
+            string acronym = filteredWords[0];
+            string acroLower = acronym;
+            for (char &c : acroLower) c = (char)tolower((unsigned char)c);
+
+            vector<string> words;
+            for (size_t i = 1; i < filteredWords.size(); i++) words.push_back(filteredWords[i]);
+
+            long long count = maxCount(words, acroLower);
+            if (count > 0) {
+                cout << acronym << " can be formed in " << count << " ways\n";
             } else {
-                cout << abbr << " can be formed in " << ans << " ways\n";
+                cout << acronym << " is not a valid abbreviation\n";
             }
         }
     }
