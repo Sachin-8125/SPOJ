@@ -25,3 +25,8 @@ Thumbs.db
 *.swp
 
 .autocp/
+
+.cph/
+.dropstone/
+.qodo/
+.vscode/

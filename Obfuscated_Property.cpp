@@ -1,24 +1,20 @@
-#include <iostream>
-#include <vector>
+#include<iostream>
+#include<vector>
+#include<climits>
 using namespace std;
-
-const int MAX_N = 1000000; // Adjust as needed
-
-int main() {
-    vector<int> fusc(MAX_N + 1);
-    fusc[0] = 0;
-    fusc[1] = 1;
-
-    for (int i = 2; i <= MAX_N; ++i) {
-        if (i % 2 == 0)
-            fusc[i] = fusc[i / 2];
-        else
-            fusc[i] = fusc[i / 2] + fusc[(i / 2) + 1];
-    }
-
+int main(){
     int n;
-    while (cin >> n) {
-        cout << fusc[n] << endl;
+    cin>>n;
+    vector<long long>fact(2*n+2),res(2*n+1);
+    fact[0]=0,fact[1]=1;
+    for(int i=1;i<=n;i++){
+        fact[2*i] = fact[i];
+        fact[2*i+1] = fact[i]+fact[i+1];
     }
-    return 0;
+    long long maxi = LLONG_MIN;
+    for(int i=0;i<2*n+1;i++){
+        res[i] = fact[i]/fact[i+1];
+        maxi = max(maxi,res[i]);
+    }
+    cout<<maxi;
 }
