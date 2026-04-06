@@ -1,55 +1,73 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-using namespace std;
-typedef long long ll;
-struct Plot {
-    ll w, l;
-    bool operator<(const Plot &other) const {
-        if (w == other.w) return l > other.l;
-        return w < other.w;
-    }
-};
-vector<Plot> plots;
 
-bool bad(pair<ll,ll> a, pair<ll,ll> b, pair<ll,ll> c) {
-    // Returns true if middle line (b) is unnecessary
-    // a, b, c: (slope, intercept)
-    return (c.second-b.second)*(b.first-a.first) < (b.second-a.second)*(c.first-b.first);
+using namespace std;
+
+struct Rect {
+    long long w, l;
+};
+
+struct Line {
+    long long m, c;
+    long long eval(long long x) { return m * x + c; }
+};
+
+bool is_bad(Line l1, Line l2, Line l3) {
+    return (double)(l2.c - l1.c) * (l2.m - l3.m) >= (double)(l3.c - l2.c) * (l1.m - l2.m);
 }
 
 int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
     int n;
     cin >> n;
-    for (int i=0; i<n; ++i) {
-        ll w, l;
-        cin >> w >> l;
-        plots.push_back({w, l});
+
+    vector<Rect> raw(n);
+    for (int i = 0; i < n; i++) {
+        cin >> raw[i].w >> raw[i].l;
     }
-    sort(plots.begin(), plots.end());
-    vector<Plot> filtered;
-    for (auto& plot: plots) {
-        while (!filtered.empty() && filtered.back().l <= plot.l) {
-            filtered.pop_back();
+
+    sort(raw.begin(), raw.end(), [](Rect a, Rect b) {
+        if (a.w != b.w) return a.w < b.w;
+        return a.l < b.l;
+    });
+
+    vector<Rect> rects;
+    for (int i = 0; i < n; i++) {
+        while (!rects.empty() && rects.back().l <= raw[i].l) {
+            rects.pop_back();
         }
-        filtered.push_back(plot);
+        rects.push_back(raw[i]);
     }
-    vector<pair<ll,ll>> cht;  // Pair (slope, intercept)
-    vector<ll> dp(filtered.size());
-    dp[0] = filtered.w*filtered.l;
-    cht.push_back({filtered.l, dp});
+
+    int m = rects.size();
+    vector<long long> dp(m + 1, 0);
+    vector<Line> hull;
     int ptr = 0;
-    for (int i=1; i<filtered.size(); ++i) {
-        // Convex hull trick - find best line for current width
-        while (ptr+1 < cht.size() && cht[ptr+1].first*filtered[i].w + cht[ptr+1].second <= cht[ptr].first*filtered[i].w + cht[ptr].second)
-            ++ptr;
-        dp[i] = cht[ptr].first*filtered[i].w + cht[ptr].second;
-        // Add new plot as a line: y = l*x + dp[i]
-        pair<ll,ll> newline = {filtered[i].l, dp[i]};
-        while (cht.size()>=2 && bad(cht[cht.size()-2], cht.back(), newline))
-            cht.pop_back();
-        cht.push_back(newline);
+
+    hull.push_back({rects[0].l, 0});
+
+    for (int i = 1; i <= m; i++) {
+        long long x = rects[i - 1].w;
+        while (ptr + 1 < hull.size() && hull[ptr].eval(x) >= hull[ptr + 1].eval(x)) {
+            ptr++;
+        }
+
+        dp[i] = hull[ptr].eval(x);
+
+        if (i < m) {
+            Line newLine = {rects[i].l, dp[i]};
+            while (hull.size() >= 2 && is_bad(hull[hull.size() - 2], hull.back(), newLine)) {
+                hull.pop_back();
+            }
+            hull.push_back(newLine);
+            if (ptr >= hull.size()) ptr = hull.size() - 1;
+        }
     }
-    cout << dp.back() << endl;
+
+    cout << dp[m] << endl;
+
     return 0;
 }
