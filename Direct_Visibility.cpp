@@ -3,181 +3,125 @@
 #include <queue>
 #include <cmath>
 #include <algorithm>
-#include <iomanip>
 
 using namespace std;
+
+// Direction constants for 4-way movement
+const int DX[] = {1, -1, 0, 0};
+const int DY[] = {0, 0, 1, -1};
 
 struct Point {
     int r, c;
 };
 
-int P, Q;
-int Z[205][205];           // Terrain height
-int dist_map[205][205];    // Distance from start
-int vis_memo[205][205][2]; 
+class MissionSolver {
+    int Rows, Cols;
+    vector<vector<int>> heights;
+    Point start, end;
 
-int R1, C1, R2, C2; 
-
-bool check_los(int r_start, int c_start, int r_end, int c_end) {
-    if (r_start == r_end && c_start == c_end) return true;
-
-    double z_start = Z[r_start][c_start];
-    double z_end = Z[r_end][c_end];
-    
-    int dr = r_end - r_start;
-    int dc = c_end - c_start;
-    
-    int cur_r = r_start;
-    int cur_c = c_start;
-    
-    // Determine step direction
-    int step_r = (dr > 0) ? 1 : ((dr < 0) ? -1 : 0);
-    int step_c = (dc > 0) ? 1 : ((dc < 0) ? -1 : 0);
-    
-    double t_curr = 0.0;
-    
-    double t_next_r = 1e9;
-    double t_next_c = 1e9;
-    double dt_r = 1e9;
-    double dt_c = 1e9;
-    
-    if (step_r != 0) {
-        dt_r = 1.0 / abs(dr);
-        t_next_r = 0.5 * dt_r; 
+    // Helper math functions for visibility logic
+    int calc(int dx, int dy, int i) {
+        return dx == 0 ? 0 : (dy * i + dx - 1) / dx / 2;
     }
-    if (step_c != 0) {
-        dt_c = 1.0 / abs(dc);
-        t_next_c = 0.5 * dt_c;
+
+    int calcc(int dx, int dy, int i) {
+        return dx == 0 ? 0 : (dy * i + dx) / dx / 2;
     }
-    
-    const double EPS = 1e-9;
-    
-    // Grid Traversal
-    while (t_curr < 1.0 - EPS) {
-        double t_exit;
-        int next_r_inc = 0;
-        int next_c_inc = 0;
-        
-        // Find which boundary is closer
-        if (abs(t_next_r - t_next_c) < EPS) {
-            // Corner crossing: pass through vertex
-            t_exit = t_next_r;
-            next_r_inc = step_r;
-            next_c_inc = step_c;
-            t_next_r += dt_r;
-            t_next_c += dt_c;
-        } else if (t_next_r < t_next_c) {
-            // Crossing horizontal boundary (row change)
-            t_exit = t_next_r;
-            next_r_inc = step_r;
-            t_next_r += dt_r;
-        } else {
-            // Crossing vertical boundary (column change)
-            t_exit = t_next_c;
-            next_c_inc = step_c;
-            t_next_c += dt_c;
+
+    // Line-of-sight check between two points
+    bool is_visible(int r1, int c1, int r2, int c2) {
+        int z1 = heights[r1][c1] * 2 + 1;
+        int dx = (r2 - r1) * 2, dy = (c2 - c1) * 2;
+        int dz = (heights[r2][c2] - heights[r1][c1]) * 2;
+        int sx = abs(dx), sy = abs(dy);
+        int xsgn = (dx > 0) ? 1 : -1, ysgn = (dy > 0) ? 1 : -1;
+
+        if (dx) {
+            for (int i = 1; i < sx; i += 2) {
+                int nx = r1 + (i / 2) * xsgn;
+                int ny = c1 + calc(sx, sy, i) * ysgn;
+                int ty = c1 + calcc(sx, sy, i) * ysgn;
+                if (dz * i < (heights[nx][ny] * 2 - z1) * sx || 
+                    dz * i < (heights[nx + xsgn][ty] * 2 - z1) * sx) return false;
+            }
         }
-        
-        // Clamp to 1.0
-        if (t_exit > 1.0 - EPS) t_exit = 1.0;
-        if (!((cur_r == r_start && cur_c == c_start) || (cur_r == r_end && cur_c == c_end))) {
-             // Calculate ray height at entry (t_curr) and exit (t_exit) of the cell
-             double h1 = (z_start + 0.5) + t_curr * (z_end - z_start);
-             double h2 = (z_start + 0.5) + t_exit * (z_end - z_start);
-             
-             // Since the segment is linear, the minimum height is at one of the endpoints.
-             double min_h = min(h1, h2);
-             if (min_h < Z[cur_r][cur_c] - EPS) return false;
+        if (dy) {
+            for (int i = 1; i < sy; i += 2) {
+                int ny = c1 + (i / 2) * ysgn;
+                int nx = r1 + calc(sy, sx, i) * xsgn;
+                int tx = r1 + calcc(sy, sx, i) * xsgn;
+                if (dz * i < (heights[nx][ny] * 2 - z1) * sy || 
+                    dz * i < (heights[tx][ny + ysgn] * 2 - z1) * sy) return false;
+            }
         }
-        
-        // Advance to next cell
-        cur_r += next_r_inc;
-        cur_c += next_c_inc;
-        t_curr = t_exit;
+        return true;
     }
-    
-    return true;
-}
 
-// Helper to check visibility to specific BTS with memoization
-bool can_see(int r, int c, int target_idx) {
-    if (vis_memo[r][c][target_idx] != -1) return vis_memo[r][c][target_idx];
-    
-    int tr = (target_idx == 0) ? R1 : R2;
-    int tc = (target_idx == 0) ? C1 : C2;
-    
-    bool res = check_los(r, c, tr, tc);
-    vis_memo[r][c][target_idx] = res ? 1 : 0;
-    return res;
-}
-
-void solve() {
-    cin >> P >> Q;
-    for (int i = 0; i < P; ++i) {
-        for (int j = 0; j < Q; ++j) {
-            cin >> Z[i][j];
-            dist_map[i][j] = -1;
-            vis_memo[i][j][0] = -1;
-            vis_memo[i][j][1] = -1;
-        }
+    bool can_move(int r, int c, int dr, int dc) {
+        int diff = heights[dr][dc] - heights[r][c];
+        // Height constraint: max 1 unit up, max 3 units down
+        if (diff < -3 || diff > 1) return false;
+        // Must be visible from either start or end point
+        return is_visible(dr, dc, start.r, start.c) || is_visible(dr, dc, end.r, end.c);
     }
-    cin >> R1 >> C1 >> R2 >> C2;
-    // Convert 1-based input to 0-based
-    R1--; C1--; R2--; C2--;
-    
-    queue<Point> q;
-    q.push({R1, C1});
-    dist_map[R1][C1] = 0;
-    
-    // Direction arrays: N, S, W, E
-    int dr[] = {-1, 1, 0, 0};
-    int dc[] = {0, 0, -1, 1};
-    
-    while(!q.empty()){
-        Point curr = q.front();
-        q.pop();
-        
-        // If we reached the second BTS
-        if (curr.r == R2 && curr.c == C2) {
-            cout << "The shortest path is " << dist_map[curr.r][curr.c] << " steps long." << endl;
+
+public:
+    void solve() {
+        if (!(cin >> Rows >> Cols)) return;
+        heights.assign(Rows, vector<int>(Cols));
+        for (int i = 0; i < Rows; ++i)
+            for (int j = 0; j < Cols; ++j)
+                cin >> heights[i][j];
+
+        cin >> start.r >> start.c >> end.r >> end.c;
+        --start.r; --start.c; --end.r; --end.c; // 0-indexing
+
+        if (start.r == end.r && start.c == end.c) {
+            cout << "The shortest path is 0 steps long." << endl;
             return;
         }
+
+        // BFS Setup
+        queue<Point> q;
+        vector<vector<int>> dist(Rows, vector<int>(Cols, -1));
         
-        int d = dist_map[curr.r][curr.c];
-        
-        for(int i=0; i<4; ++i){
-            int nr = curr.r + dr[i];
-            int nc = curr.c + dc[i];
-            
-            // Bounds check
-            if (nr >= 0 && nr < P && nc >= 0 && nc < Q) {
-                // If not visited
-                if (dist_map[nr][nc] == -1) {
-                    int diff = Z[nr][nc] - Z[curr.r][curr.c];
-                    if (diff <= 1 && diff >= -3) {
-                        if (can_see(nr, nc, 0) || can_see(nr, nc, 1)) {
-                            dist_map[nr][nc] = d + 1;
-                            q.push({nr, nc});
+        q.push(start);
+        dist[start.r][start.c] = 0;
+
+        while (!q.empty()) {
+            Point curr = q.front();
+            q.pop();
+
+            for (int i = 0; i < 4; ++i) {
+                int nr = curr.r + DX[i];
+                int nc = curr.c + DY[i];
+
+                if (nr >= 0 && nr < Rows && nc >= 0 && nc < Cols && dist[nr][nc] == -1) {
+                    if (can_move(curr.r, curr.c, nr, nc)) {
+                        dist[nr][nc] = dist[curr.r][curr.c] + 1;
+                        if (nr == end.r && nc == end.c) {
+                            cout << "The shortest path is " << dist[nr][nc] << " steps long." << endl;
+                            return;
                         }
+                        q.push({nr, nc});
                     }
                 }
             }
         }
+        cout << "Mission impossible!" << endl;
     }
-    
-    cout << "Mission impossible!" << endl;
-}
+};
 
 int main() {
-    // Fast I/O is crucial for large number of test cases
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
-    
-    int t;
-    if (cin >> t) {
-        while(t--) {
-            solve();
-        }
+    // Faster I/O
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    int testCases;
+    if (!(cin >> testCases)) return 0;
+    while (testCases--) {
+        MissionSolver solver;
+        solver.solve();
     }
     return 0;
 }
