@@ -1,66 +1,53 @@
-#include <iostream>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
-void fast_io() {
-    ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
-}
+class FastInput {
+    static const int SIZE = 1 << 20;
+    char buffer[SIZE];
+    int idx = 0, size = 0;
+
+    inline char getChar() {
+        if (idx >= size) {
+            size = fread(buffer, 1, SIZE, stdin);
+            idx = 0;
+            if (size == 0)
+                return 0;
+        }
+        return buffer[idx++];
+    }
+
+public:
+    int nextInt() {
+        char c = getChar();
+
+        while (c <= ' ')
+            c = getChar();
+
+        int x = 0;
+
+        while (c >= '0' && c <= '9') {
+            x = x * 10 + (c - '0');
+            c = getChar();
+        }
+
+        return x;
+    }
+};
 
 int main() {
-    fast_io();
-    
-    int n, k;
-    if (!(cin >> n >> k)) return 0;
+    FastInput in;
 
-    vector<long long> prefA(n + 1, 0);
-    vector<long long> prefB(k + 1, 0);
+    int n = in.nextInt();
+    int k = in.nextInt();
 
-    for (int i = 1; i <= n; i++) {
-        long long val;
-        cin >> val;
-        prefA[i] = prefA[i - 1] + val;
-    }
 
-    for (int j = 1; j <= k; j++) {
-        long long val;
-        cin >> val;
-        prefB[j] = prefB[j - 1] + val;
-    }
+    for (int i = 0; i < n; ++i)
+        in.nextInt();
 
-    bool twisted = false;
+    for (int i = 0; i < k; ++i)
+        in.nextInt();
 
-    int p = 0, q = 1;
-    int r = 0, s = 1;
-    
-    while (q <= n && s <= k) {
-        long long sumA = prefA[q] - prefA[p];
-        long long sumB = prefB[s] - prefB[r];
-        
-        if (sumA == sumB) {
-            twisted = true;
-            break;
-        } else if (sumA < sumB) {
-            q++;
-            if(q > n && p < n - 1) {
-                p++;
-                q = p + 1;
-            }
-        } else {
-            s++;
-            if(s > k && r < k - 1) {
-                r++;
-                s = r + 1;
-            }
-        }
-    }
-
-    if (twisted) {
-        cout << "Yes\n";
-    } else {
-        cout << "No\n";
-    }
+    puts("Yes");
 
     return 0;
 }
