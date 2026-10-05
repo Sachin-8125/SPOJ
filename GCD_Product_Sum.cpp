@@ -1,19 +1,43 @@
-#include<iostream>
-#include<algorithm>
+#include <bits/stdc++.h>
 using namespace std;
-int main(){
-    long long t;
-    cin>>t;
-    while(t--){
-        ios_base::sync_with_stdio(false);
-        cin.tie(NULL);
-        cout.tie(NULL);
-        long long n;
-        cin>>n;
-        long long  gcd_sum = 0;
-        for(int i=1;i<=n;i++){
-            gcd_sum += i*__gcd(i,n);
-        }
-        cout<<gcd_sum<<endl;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int q;
+    if (!(cin >> q)) return 0;
+
+    vector<int> queries(q);
+    int maxN = 1;
+    for (int &n : queries) {
+        cin >> n;
+        maxN = max(maxN, n);
     }
+
+    vector<int> phi(maxN + 1);
+    for (int i = 0; i <= maxN; ++i) phi[i] = i;
+    for (int p = 2; p <= maxN; ++p) {
+        if (phi[p] == p) { 
+            for (int x = p; x <= maxN; x += p)
+                phi[x] -= phi[x] / p;
+        }
+    }
+
+    vector<long long> answer(maxN + 1);
+    for (int n = 1; n <= maxN; ++n)
+        answer[n] = 1LL * n * n;
+
+    for (int m = 2; m <= maxN; ++m) {
+        const long long coprimeSum = 1LL * m * phi[m] / 2;
+        for (int d = 1; d <= maxN / m; ++d) {
+            const int n = d * m;
+            answer[n] += 1LL * d * d * coprimeSum;
+        }
+    }
+
+    for (int n : queries)
+        cout << answer[n] << '\n';
+
+    return 0;
 }
