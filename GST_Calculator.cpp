@@ -4,6 +4,15 @@
 
 using namespace std;
 
+long long toCents(const string& price) {
+    size_t dot = price.find('.');
+    long long ringgit = stoll(price.substr(0, dot));
+    long long sen = stoll(price.substr(dot + 1));
+
+    // Prices are stated to have exactly two decimal places.
+    return ringgit * 100 + sen;
+}
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -15,33 +24,27 @@ int main() {
         int N;
         cin >> N;
 
-        long long totalCents = 0;
-        long long gstCents = 0;
+        long long totalBaseCents = 0;
+        long long standardRatedCents = 0;
 
         for (int i = 0; i < N; ++i) {
-            string name, rate;
+            string name, price, rate;
             int quantity;
-            long long priceCents;
-            char dot;
-            int dollars, cents;
 
-            cin >> name >> quantity >> dollars >> dot >> cents;
-            cin >> rate;
+            cin >> name >> quantity >> price >> rate;
 
-            priceCents = static_cast<long long>(dollars) * 100 + cents;
-            long long baseCents = quantity * priceCents;
+            long long baseCents = quantity * toCents(price);
+            totalBaseCents += baseCents;
 
-            long long itemGstCents = 0;
             if (rate == "SR") {
-                itemGstCents = (baseCents * 6 + 50) / 100;
+                standardRatedCents += baseCents;
             }
-
-            totalCents += baseCents + itemGstCents;
-            gstCents += itemGstCents;
         }
 
-        cout << "Case #" << tc << ":\n";
+        long long gstCents = (standardRatedCents * 6 + 50) / 100;
+        long long totalCents = totalBaseCents + gstCents;
 
+        cout << "Case #" << tc << ":\n";
         cout << "Total Amount Include GST: "
              << totalCents / 100 << '.'
              << setw(2) << setfill('0') << totalCents % 100
