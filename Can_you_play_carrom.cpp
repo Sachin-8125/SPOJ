@@ -1,85 +1,58 @@
-#include <iostream>
-#include <string>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
-// Helper function to determine team based on player
-int getTeam(char player) {
-    if (player == 'A' || player == 'C') return 1; // Team-1
-    return 2; // Team-2
-}
-
 int main() {
-    string line;
-    
-    while (true) {
-        int white1 = 0, black1 = 0, red1 = 0; // Team-1 stats
-        int white2 = 0, black2 = 0, red2 = 0; // Team-2 stats
+    string tok;
+    vector<array<int, 4>> moves;
 
-        int total_white = 0;
-        int total_black = 0;
-        int total_red = 0;
+    auto solve = [&]() {
+        if (moves.empty()) return;
 
-        bool first_line = true;
-        bool game_started = false;
-        
-        while (getline(cin, line)) {
-            if (line.empty()) continue;
+        int whiteTeam = moves[0][0];
+        int blackTeam = 3 - whiteTeam;
+        int w = 0, b = 0, red = 0, redTeam = 0, winner = 0;
 
-            if (line[0] == '#') break;
+        for (auto &m : moves) {
+            w += m[1];
+            b += m[2];
 
-            char player;
-            int w, b, r;
-            sscanf(line.c_str(), "%c %d %d %d", &player, &w, &b, &r);
-
-            if (first_line) {
-                // Determine starting team (Team-1), who got white
-                int team = getTeam(player);
-                game_started = true;
-                first_line = false;
+            if (m[3] > 0 && !red) {
+                red = 1;
+                redTeam = m[0];
             }
 
-            int team = getTeam(player);
-
-            if (team == 1) {
-                white1 += w;
-                black1 += b;
-                red1 += r;
-            } else {
-                white2 += w;
-                black2 += b;
-                red2 += r;
+            if (!winner) {
+                if (w >= 9) winner = whiteTeam;
+                else if (b >= 9) winner = blackTeam;
             }
-
-            total_white += w;
-            total_black += b;
-            total_red += r;
-
-            // total_white+total_black+total_red must be ≤ 19 (9 white + 9 black + 1 red)
         }
 
-        if (!game_started) break; // All input processed
+        if (!winner || !red) {
+            puts("Incomplete game.");
+        } else {
+            int remaining = (winner == whiteTeam) ? max(0, 9 - b) : max(0, 9 - w);
+            int pts = remaining + (redTeam == winner ? 5 : 0);
+            printf("Team-%d win and the point is %d.\n", winner, pts);
+        }
 
-        // CHECK IF GAME COMPLETE
-        bool complete = (white1 + white2 == 9) && (black1 + black2 == 9) && (red1 + red2 == 1);
+        moves.clear();
+    };
 
-        if (!complete) {
-            cout << "Incomplete game." << endl;
+    while (cin >> tok) {
+        if (tok[0] == '#') {
+            solve();
             continue;
         }
 
-        // Decide the winner
-        if ((white1 + red1 == 10)) { // Team-1 win
-            int points = 9 - black2 + (red1 == 1 ? 5 : 0);
-            cout << "Team-1 win and the point is " << points << "." << endl;
-        } else if ((black2 + red2 == 10)) { // Team-2 win
-            int points = 9 - white1 + (red2 == 1 ? 5 : 0);
-            cout << "Team-2 win and the point is " << points << "." << endl;
-        } else {
-            cout << "Incomplete game." << endl;
-        }
+        int W, B, R;
+        if (!(cin >> W >> B >> R)) break;
+
+        char p = toupper(tok[0]);
+        int team = (p == 'A' || p == 'C') ? 1 : 2;
+        moves.push_back({team, W, B, R});
     }
+
+    solve();
 
     return 0;
 }
