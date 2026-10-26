@@ -22,7 +22,7 @@ void solve() {
         int found_a = -1;
         long long next_Xr = 0, next_Xi = 0;
 
-        for (long long a = 0; a * a < N; ++a) {
+        for (long long a = 0; a < N; ++a) {
             long long num_r = (Xr - a) * Br + Xi * Bi;
             long long num_i = Xi * Br - (Xr - a) * Bi;
 
