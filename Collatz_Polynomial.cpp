@@ -1,22 +1,25 @@
-#include <iostream>
+#include <bits/stdc++.h>
 using namespace std;
+
 int main() {
-    ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
 
-    unsigned long long P;
+    unsigned long long p;
+    cin >> p;
 
-    if (cin >> P) {
-        long long steps = 0;
-        while (P != 1) {
-            if (P & 1) {
-                P = (P << 1) ^ P ^ 1;
-            } else {
-                P >>= 1;
-            }
-            steps++;
+    unsigned long long operations = 0;
+
+    while (p != 1) {
+        if (p & 1ULL) {
+            p = (p << 1) ^ p ^ 1ULL;
+        } else {
+            p >>= 1;
         }
-        cout << steps << endl;
+
+        ++operations;
     }
+
+    cout << operations << '\n';
     return 0;
 }
